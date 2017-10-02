@@ -27,9 +27,10 @@ kafka-configs --zookeeper localhost:2181 --entity-type topics --alter --delete-c
 kafka-configs --zookeeper localhost:2181 --entity-type topics --describe --entity-name openslava
 ```
 
-For local Kafka operation you'll also want to add to your `server.properties` (on homebrew this is in `/usr/local/etc/kafka`) to get rid off replication factor warnings on the `offsets` topic that keeps track of consumers position. Additionally allow _real_ topic deletion:
+For local Kafka operation you'll also want to add to your `server.properties` (on homebrew this is in `/usr/local/etc/kafka`) to get rid off replication factor warnings on the `offsets` topic that keeps track of consumers position. Additionally allow _real_ topic deletion & speed up (only on dev) the retention checks to each 10sek.
 
 ```
 offsets.topic.replication.factor=1
 delete.topic.enable=true
+log.retention.check.interval.ms=10000
 ```
