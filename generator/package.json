@@ -1,0 +1,11 @@
+{
+  "name": "generator",
+  "version": "0.1",
+  "description": "test data generator for small streaming demo",
+  "main": "app.js",
+  "license": "MIT",
+  "dependencies": {
+    "kafka-node": "^2.2.3",
+    "optimist": "^0.6.1"
+  }
+}
