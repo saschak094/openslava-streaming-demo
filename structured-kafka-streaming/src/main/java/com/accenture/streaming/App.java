@@ -12,52 +12,74 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
- * Spark Structured Stream Processing
- * Joins static data with incoming values of Kafka 
+ * Spark Structured Stream Processing with Apache Kafka <br>
+ * Consumes JSON data from Kafka, maps the data into Java Objects and joins the
+ * Kafka data with static data from a CSV file.
  *
  */
-// TODO: write some comments 
 public class App {
+	private static final String KAFKA_SUBSCRIBE_TYPE = "subscribe";
+	private static final String STRUCT_TYPE_INTEGER = "integer";
+	private static final String STRUCT_TYPE_STRING = "string";
+	private static final String FORMAT_CSV = "csv";
+	private static final String FORMAT_KAFKA = "kafka";
+	private static final String SPARK_MASTER = "spark.master";
+	private static final String STRUCTURED_KAFKA_STREAMING = "StructuredKafkaStreaming";
+	private static final String TS = "ts";
+	private static final String UID = "uid";
+	private static final String ACTION = "action";
+	private static final String KAFKA_BOOTSTRAP_SERVERS = "kafka.bootstrap.servers";
+	private static final String CONSOLE = "console";
+	private static final String APPEND = "append";
+	private static final String USERNAME = "username";
+
 	public static void main(String[] args) throws StreamingQueryException {
-		
-		// input parameters parsing -> subscribeType is "subscribe"
-		if (args.length < 3) {
-			System.err
-					.println("Usage: JavaStructuredKafkaWordCount <bootstrap-servers> " + "<subscribe-type> <topics>");
+
+		// input parameters parsing
+		if (args.length < 4) {
+			System.err.println(
+					"Required input params -> <bootstrap-server (ip:port)> <topics> <static_data_dir> <spark_master_address");
 			System.exit(1);
 		}
 
+		// Kafka Broker IP with port
 		String bootstrapServers = args[0];
-		String subscribeType = args[1];
+		// Kafka Topic
 		String topics = args[2];
+		// Directory where the CSV file is stored
+		String staticDataDir = args[3];
+		// Spark Master address
+		String masterAddress = args[4];
 
-		// Getting the static data from the static directory 
-		// TODO: improve that
-		SparkSession spark = SparkSession.builder().appName("JavaStructuredKafkaWordCount")
-				.config("spark.master", "local").getOrCreate();
-		StructType staticSchema = new StructType().add("username", "string").add("plz", "integer");
-		Dataset<Row> csvDF = spark.read().option("sep", ",").schema(staticSchema).format("csv")
-				.load("./static-data");
+		// Getting the static CSV data from a directory
+		SparkSession spark = SparkSession.builder().appName(STRUCTURED_KAFKA_STREAMING)
+				.config(SPARK_MASTER, masterAddress).getOrCreate();
+		StructType staticSchema = new StructType().add(UID, STRUCT_TYPE_STRING).add("street", STRUCT_TYPE_STRING)
+				.add("city", STRUCT_TYPE_STRING).add("zip", STRUCT_TYPE_STRING).add("state", STRUCT_TYPE_STRING).add("country", STRUCT_TYPE_STRING).add("mobilenumber", STRUCT_TYPE_STRING);
 		
-		
-		// Schema mapped to the incoming values
+		Dataset<Row> staticData = spark.read().option("sep", ",").schema(staticSchema).format(FORMAT_CSV)
+				.load(staticDataDir);
+
+		// Schema Mapping for the incoming Kafka values
 		StructType activitySchema = DataTypes.createStructType(
-				new StructField[] { DataTypes.createStructField("username", DataTypes.StringType, false),
-						DataTypes.createStructField("action", DataTypes.StringType, false),
-						DataTypes.createStructField("uid", DataTypes.StringType, false),
-						DataTypes.createStructField("ts", DataTypes.TimestampType, false) });
+				new StructField[] { DataTypes.createStructField(USERNAME, DataTypes.StringType, false),
+						DataTypes.createStructField(ACTION, DataTypes.StringType, false),
+						DataTypes.createStructField(UID, DataTypes.StringType, false),
+						DataTypes.createStructField(TS, DataTypes.TimestampType, false) });
 
-		// Definition of the Kafka Stream including the mapping of the JSON into the Java Objects 
-		Dataset<UserActivity> kafkaEntries = spark.readStream().format("kafka")
-				.option("kafka.bootstrap.servers", bootstrapServers).option(subscribeType, topics).load()
+		// Definition of the Kafka Stream including the mapping of JSON into Java
+		// Objects
+		Dataset<UserActivity> kafkaEntries = spark.readStream().format(FORMAT_KAFKA)
+				.option(KAFKA_BOOTSTRAP_SERVERS, bootstrapServers).option(KAFKA_SUBSCRIBE_TYPE, topics).load()
 				.selectExpr("CAST(value AS STRING)")
 				.select(functions.from_json(functions.col("value"), activitySchema).as("json")).select("json.*")
 				.as(Encoders.bean(UserActivity.class));
-		Dataset<Row> joinedData = kafkaEntries.join(csvDF, "username");
-		
-		
+
+		// Join kafkaEntries with the static data
+		Dataset<Row> joinedData = kafkaEntries.join(staticData, UID);
+
 		// Starting streaming
-		StreamingQuery query = joinedData.writeStream().format("console").outputMode("append").start();
+		StreamingQuery query = joinedData.writeStream().format(CONSOLE).outputMode(APPEND).start();
 		query.awaitTermination();
 	}
 }
