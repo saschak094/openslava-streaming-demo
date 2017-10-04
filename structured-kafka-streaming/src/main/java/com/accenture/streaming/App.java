@@ -35,8 +35,8 @@ public class App {
 		// TODO: improve that
 		SparkSession spark = SparkSession.builder().appName("JavaStructuredKafkaWordCount")
 				.config("spark.master", "local").getOrCreate();
-		StructType staticSchema = new StructType().add("name", "string").add("plz", "integer");
-		Dataset<Row> csvDF = spark.readStream().option("sep", ",").schema(staticSchema).format("csv")
+		StructType staticSchema = new StructType().add("username", "string").add("plz", "integer");
+		Dataset<Row> csvDF = spark.read().option("sep", ",").schema(staticSchema).format("csv")
 				.load("./static-data");
 		
 		
@@ -48,17 +48,16 @@ public class App {
 						DataTypes.createStructField("ts", DataTypes.TimestampType, false) });
 
 		// Definition of the Kafka Stream including the mapping of the JSON into the Java Objects 
-		Dataset<UserActivity> lines = spark.readStream().format("kafka")
+		Dataset<UserActivity> kafkaEntries = spark.readStream().format("kafka")
 				.option("kafka.bootstrap.servers", bootstrapServers).option(subscribeType, topics).load()
 				.selectExpr("CAST(value AS STRING)")
 				.select(functions.from_json(functions.col("value"), activitySchema).as("json")).select("json.*")
 				.as(Encoders.bean(UserActivity.class));
-
-		// Starting both streams 
-		StreamingQuery query = lines.writeStream().format("console").outputMode("append").start();
-		StreamingQuery queryCsv = csvDF.writeStream().format("console").outputMode("append").start();
+		Dataset<Row> joinedData = kafkaEntries.join(csvDF, "username");
 		
+		
+		// Starting streaming
+		StreamingQuery query = joinedData.writeStream().format("console").outputMode("append").start();
 		query.awaitTermination();
-		queryCsv.awaitTermination();
 	}
 }
