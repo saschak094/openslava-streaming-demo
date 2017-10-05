@@ -14,18 +14,22 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
-	<dependencies>	
+	<dependencies>
 		<dependency>
 			<groupId>org.apache.spark</groupId>
-			<artifactId>spark-sql-kafka-0-10_2.10</artifactId>
+			<artifactId>spark-sql-kafka-0-10_2.11</artifactId>
 			<version>2.2.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.spark</groupId>
-			<artifactId>spark-sql_2.10</artifactId>
+			<artifactId>spark-sql_2.11</artifactId>
 			<version>2.2.0</version>
 		</dependency>
-	
+		<dependency>
+			<groupId>org.scala-lang</groupId>
+			<artifactId>scala-reflect</artifactId>
+			<version>2.11.10</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>

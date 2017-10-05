@@ -19,7 +19,6 @@ import org.apache.spark.sql.types.StructType;
  */
 public class App {
 	private static final String KAFKA_SUBSCRIBE_TYPE = "subscribe";
-	private static final String STRUCT_TYPE_INTEGER = "integer";
 	private static final String STRUCT_TYPE_STRING = "string";
 	private static final String FORMAT_CSV = "csv";
 	private static final String FORMAT_KAFKA = "kafka";
