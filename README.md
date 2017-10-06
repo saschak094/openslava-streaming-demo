@@ -4,7 +4,7 @@ In this talk, we'll show how to do state of the art streaming in the Java / BigD
 
 Specifically this means we have the following components:
 
-- a small JavaScript [generator](../generator-javascript/)
-- a small Python [generator](../generator-python/)
+- a small JavaScript [generator](./generator-js/)
+- a small Python [generator](./generator-python/)
 - a small "database" with fact-data we will join with. This is just a CSV :-)
-- the actual Java 8 based streaming [job] (../structured-kafka-streaming)
+- the actual Java 8 based streaming [job] (./structured-kafka-streaming)
