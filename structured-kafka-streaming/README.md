@@ -1,6 +1,6 @@
 # Data Streaming with Spark and Java 
 
-The purpose of this application is to stream data from Kafka, combine the realtime data with static data from a CSV and either print it on the console or send it to Kafka.
+The purpose of this application is to stream data from Apache Kafka, combine the realtime data with static data from a CSV and either print it on the console or send it to Apache Kafka.
 
 ## Run the application 
 
@@ -13,5 +13,6 @@ The purpose of this application is to stream data from Kafka, combine the realti
 <argument>spark_master</argument
 ```
 
-### To run the application on the command line use the following command: 
+### Execute the App 
+Run the application with the following command on the command line: 
 ``` mvn exec:java```
