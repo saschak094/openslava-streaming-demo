@@ -1,9 +1,17 @@
-# OpenSlava material for "Data Streaming - No More Batches"
+# Data Streaming with Spark and Java 
 
-In this talk, we'll show how to do state of the art streaming in the Java / BigData ecosystem for operational systems so you never (realistic: rarely) have to do classic batches again and even those are solved more elegantly. This is the foundation for many asynchronous integration patterns in a microservice world where moving data becomes more important than ever. We'll show how data can be transformed with ease and how this all fits in a modern Java-centric developer lifecycle.
+The purpose of this application is to stream data from Kafka, combine the realtime data with static data from a CSV and either print it on the console or send it to Kafka.
 
-Specifically this means we have the following components:
+## Run the application 
 
-- a small [generator](../generator/)
-- a small "database" with fact-data we will join with. This is just a CSV :-)
-- the actual Java 8 based (streaming job) [../structured-kafka-streaming] 
+### Validate and change the runtime arguments in the pom.xml
+```xml
+<argument>kafka_broker:ip</argument>
+<argument>subscribe</argument>
+<argument>kafka_topic</argument>
+<argument>csv_directory</argument>
+<argument>spark_master</argument
+```
+
+### To run the application on the command line use the following command: 
+``` mvn exec:java```
