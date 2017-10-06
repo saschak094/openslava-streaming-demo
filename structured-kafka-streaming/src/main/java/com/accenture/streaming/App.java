@@ -1,14 +1,15 @@
 package com.accenture.streaming;
 
+import static org.apache.spark.sql.functions.*;
+
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Encoders;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.functions;
+import org.apache.spark.sql.streaming.OutputMode;
 import org.apache.spark.sql.streaming.StreamingQuery;
 import org.apache.spark.sql.streaming.StreamingQueryException;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.streaming.Trigger;
 import org.apache.spark.sql.types.StructType;
 
 /**
@@ -18,19 +19,9 @@ import org.apache.spark.sql.types.StructType;
  *
  */
 public class App {
-	private static final String KAFKA_SUBSCRIBE_TYPE = "subscribe";
-	private static final String STRUCT_TYPE_STRING = "string";
-	private static final String FORMAT_CSV = "csv";
-	private static final String FORMAT_KAFKA = "kafka";
-	private static final String SPARK_MASTER = "spark.master";
-	private static final String STRUCTURED_KAFKA_STREAMING = "StructuredKafkaStreaming";
-	private static final String TS = "ts";
-	private static final String UID = "uid";
-	private static final String ACTION = "action";
-	private static final String KAFKA_BOOTSTRAP_SERVERS = "kafka.bootstrap.servers";
-	private static final String CONSOLE = "console";
-	private static final String APPEND = "append";
-	private static final String USERNAME = "username";
+	static final String KAFKA_SUBSCRIBE_TYPE = "subscribe";
+	static final String SPARK_MASTER = "spark.master";
+	static final String KAFKA_BOOTSTRAP_SERVERS = "kafka.bootstrap.servers";
 
 	public static void main(String[] args) throws StreamingQueryException {
 
@@ -51,34 +42,75 @@ public class App {
 		String masterAddress = args[4];
 
 		// Getting the static CSV data from a directory
-		SparkSession spark = SparkSession.builder().appName(STRUCTURED_KAFKA_STREAMING)
+		SparkSession spark = SparkSession.builder().appName("OpenSlava 2017 Streaming Demo")
 				.config(SPARK_MASTER, masterAddress).getOrCreate();
-		StructType staticSchema = new StructType().add(UID, STRUCT_TYPE_STRING).add("street", STRUCT_TYPE_STRING)
-				.add("city", STRUCT_TYPE_STRING).add("zip", STRUCT_TYPE_STRING).add("state", STRUCT_TYPE_STRING).add("country", STRUCT_TYPE_STRING).add("mobilenumber", STRUCT_TYPE_STRING);
-		
-		Dataset<Row> staticData = spark.read().option("sep", ",").schema(staticSchema).format(FORMAT_CSV)
-				.load(staticDataDir);
 
-		// Schema Mapping for the incoming Kafka values
-		StructType activitySchema = DataTypes.createStructType(
-				new StructField[] { DataTypes.createStructField(USERNAME, DataTypes.StringType, false),
-						DataTypes.createStructField(ACTION, DataTypes.StringType, false),
-						DataTypes.createStructField(UID, DataTypes.StringType, false),
-						DataTypes.createStructField(TS, DataTypes.TimestampType, false) });
+		// mute it down, Spark is superchatty on INFO
+		spark.sparkContext().setLogLevel("WARN");
+
+		// Define static schema (our CSV)
+		StructType staticSchema = new StructType()
+				.add("uid", "string")			// we'll match on this column
+				.add("street", "string")		// all other fields...
+				.add("city", "string")
+				.add("zip", "string")
+				.add("state", "string")
+				.add("country", "string")
+				.add("mobilenumber", "string");
+
+		// now let's read the CSV and associate it with our staticSchema
+		Dataset<Row> staticData = spark.read()
+				.format("csv")						// reading a CSV
+				.option("sep", ",")			// separator is ","
+				.schema(staticSchema)		// apply schema
+				.load(staticDataDir);		// load all files from this dir
 
 		// Definition of the Kafka Stream including the mapping of JSON into Java
 		// Objects
-		Dataset<UserActivity> kafkaEntries = spark.readStream().format(FORMAT_KAFKA)
-				.option(KAFKA_BOOTSTRAP_SERVERS, bootstrapServers).option(KAFKA_SUBSCRIBE_TYPE, topics).load()
-				.selectExpr("CAST(value AS STRING)")
-				.select(functions.from_json(functions.col("value"), activitySchema).as("json")).select("json.*")
-				.as(Encoders.bean(UserActivity.class));
+		Dataset<UserActivity> kafkaEntries = spark.readStream()		// read a stream
+				.format("kafka")																			// from KAFKA
+				.option("kafka.bootstrap.servers", bootstrapServers)	// connection to servers
+				.option("subscribe", topics).load()									// subscribe & load
+				.select(json_tuple(col("value").cast("string"), 			// explode value column as JSON
+						"action", "uid", "username", "ts"))							// JSON fields we extract
+				.toDF("action", "uid", "username", "ts")							// map columns to new names (same here in demo)
+				.as(Encoders.bean(UserActivity.class));							// make a good old JavaBean out of it
 
 		// Join kafkaEntries with the static data
-		Dataset<Row> joinedData = kafkaEntries.join(staticData, UID);
+		 Dataset<Row> joinedData = kafkaEntries.join(staticData, "uid");
 
-		// Starting streaming
-		StreamingQuery query = joinedData.writeStream().format(CONSOLE).outputMode(APPEND).start();
+		// Write the real-time data from Kafka to the console
+		StreamingQuery query = kafkaEntries.writeStream()		// write a stream
+				.trigger(Trigger.ProcessingTime(2000))				// every two seconds
+				.format("console")														// to the console
+				.outputMode(OutputMode.Append())							// only write newly matched stuff
+				.start();
+		
+		
+	// Start streaming to command line 		
+//		StreamingQuery query = joinedData.writeStream()		// write a stream
+//				.trigger(Trigger.ProcessingTime(2000))				// every two seconds
+//				.format("console")														// to the console
+//				.outputMode(OutputMode.Append())							// only write newly matched stuff
+//				.start();
+		
+		/*
+		StreamingQuery query = joinedData
+				.select(col("uid").as("key"), 								// uid is our key for Kafka (not ideal!)
+						to_json(struct(col("action")							// build a struct (grouping) and convert to JSON
+						, col("username"), col("ts")							// ...of our...
+						, col("city"), col("state")))						// columns
+						.as("value"))														// as value for Kafka
+				.writeStream()																// write this key/value as a stream
+				.trigger(Trigger.ProcessingTime(2000))				// every two seconds 
+				.format("kafka")															// to Kafka :-)
+				.option("kafka.bootstrap.servers", bootstrapServers)
+				.option("topic", "openslava-output")
+				.option("checkpointLocation", "checkpoint")  // metadata for checkpointing 
+				.start();
+		*/
+		
+		// block main thread until done.
 		query.awaitTermination();
 	}
 }

@@ -1,3 +1,4 @@
+
 # OpenSlava test data generator
 
 ## Kafka Prep
@@ -45,3 +46,4 @@ Before running the producer it's necessary to install the python kafka module
 ```python kafka_producer.py <broker_host> <topic_name>```
 
 ```python kafka_producer.py -h```  describes the parameters
+

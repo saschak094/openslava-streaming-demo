@@ -1,9 +1,15 @@
 package com.accenture.streaming;
 
+import java.io.Serializable;
 import java.sql.Timestamp;
 
-public class UserActivity {
+public class UserActivity implements Serializable{
 
+	/**
+	 * generated serialVersionUID
+	 */
+	private static final long serialVersionUID = 3056767384095027403L;
+	
 	private String username;
 	private String action;
 	private String uid;

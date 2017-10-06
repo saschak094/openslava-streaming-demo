@@ -78,7 +78,28 @@
 					</execution>
 				</executions>
 			</plugin>
-
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>1.2.1</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>java</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<mainClass>com.accenture.streaming.App</mainClass>
+					<arguments>
+						<argument>127.0.0.1:9092</argument>
+						<argument>subscribe</argument>
+						<argument>openslava</argument>
+						<argument>./static-data</argument>
+						<argument>local</argument>
+					</arguments>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 </project>
