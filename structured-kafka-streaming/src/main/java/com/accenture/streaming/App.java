@@ -49,51 +49,45 @@ public class App {
 		spark.sparkContext().setLogLevel("WARN");
 
 		// Define static schema (our CSV)
-		StructType staticSchema = new StructType()
-				.add("uid", "string")			// we'll match on this column
-				.add("street", "string")		// all other fields...
-				.add("city", "string")
-				.add("zip", "string")
-				.add("state", "string")
-				.add("country", "string")
+		StructType staticSchema = new StructType().add("uid", "string") // we'll match on this column
+				.add("street", "string") // all other fields...
+				.add("city", "string").add("zip", "string").add("state", "string").add("country", "string")
 				.add("mobilenumber", "string");
 
 		// now let's read the CSV and associate it with our staticSchema
-		Dataset<Row> staticData = spark.read()
-				.format("csv")						// reading a CSV
-				.option("sep", ",")			// separator is ","
-				.schema(staticSchema)		// apply schema
-				.load(staticDataDir);		// load all files from this dir
+		Dataset<Row> staticData = spark.read().format("csv") // reading a CSV
+				.option("sep", ",") // separator is ","
+				.schema(staticSchema) // apply schema
+				.load(staticDataDir); // load all files from this dir
 
 		// Definition of the Kafka Stream including the mapping of JSON into Java
 		// Objects
-		Dataset<UserActivity> kafkaEntries = spark.readStream()		// read a stream
-				.format("kafka")																			// from KAFKA
-				.option("kafka.bootstrap.servers", bootstrapServers)	// connection to servers
-				.option("subscribe", topics).load()									// subscribe & load
-				.select(json_tuple(col("value").cast("string"), 			// explode value column as JSON
-						"action", "uid", "username", "ts"))							// JSON fields we extract
-				.toDF("action", "uid", "username", "ts")							// map columns to new names (same here in demo)
-				.as(Encoders.bean(UserActivity.class));							// make a good old JavaBean out of it
+		Dataset<UserActivity> kafkaEntries = spark.readStream() // read a stream
+				.format("kafka") // from KAFKA
+				.option("kafka.bootstrap.servers", bootstrapServers) // connection to servers
+				.option("subscribe", topics).load() // subscribe & load
+				.select(json_tuple(col("value").cast("string"), // explode value column as JSON
+						"action", "uid", "username", "ts")) // JSON fields we extract
+				.toDF("action", "uid", "username", "ts") // map columns to new names (same here in demo)
+				.as(Encoders.bean(UserActivity.class)); // make a good old JavaBean out of it
 
 		// Join kafkaEntries with the static data
-		 Dataset<Row> joinedData = kafkaEntries.join(staticData, "uid");
+		Dataset<Row> joinedData = kafkaEntries.join(staticData, "uid");
 
 		// Write the real-time data from Kafka to the console
-		StreamingQuery query = kafkaEntries.writeStream()		// write a stream
-				.trigger(Trigger.ProcessingTime(2000))				// every two seconds
-				.format("console")														// to the console
-				.outputMode(OutputMode.Append())							// only write newly matched stuff
+		// StreamingQuery query = kafkaEntries.writeStream()		// write a stream
+		// 		.trigger(Trigger.ProcessingTime(2000))				// every two seconds
+		// 		.format("console")														// to the console
+		// 		.outputMode(OutputMode.Append())							// only write newly matched stuff
+		// 		.start();
+
+		// Start streaming to command line 		
+		StreamingQuery query = joinedData.writeStream() // write a stream
+				.trigger(Trigger.ProcessingTime(2000)) // every two seconds
+				.format("console") // to the console
+				.outputMode(OutputMode.Append()) // only write newly matched stuff
 				.start();
-		
-		
-	// Start streaming to command line 		
-//		StreamingQuery query = joinedData.writeStream()		// write a stream
-//				.trigger(Trigger.ProcessingTime(2000))				// every two seconds
-//				.format("console")														// to the console
-//				.outputMode(OutputMode.Append())							// only write newly matched stuff
-//				.start();
-		
+
 		/*
 		StreamingQuery query = joinedData
 				.select(col("uid").as("key"), 								// uid is our key for Kafka (not ideal!)
@@ -109,7 +103,7 @@ public class App {
 				.option("checkpointLocation", "checkpoint")  // metadata for checkpointing 
 				.start();
 		*/
-		
+
 		// block main thread until done.
 		query.awaitTermination();
 	}

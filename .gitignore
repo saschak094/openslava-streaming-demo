@@ -2,3 +2,4 @@
 .recommenders/
 RemoteSystemsTempFiles
 .DS_Store
+.vscode/

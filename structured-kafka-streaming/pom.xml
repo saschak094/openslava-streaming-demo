@@ -92,11 +92,11 @@
 				<configuration>
 					<mainClass>com.accenture.streaming.App</mainClass>
 					<arguments>
-						<argument>127.0.0.1:9092</argument>
+						<argument>broker:ip</argument>
 						<argument>subscribe</argument>
-						<argument>openslava</argument>
-						<argument>./static-data</argument>
-						<argument>local</argument>
+						<argument>kafka_topic</argument>
+						<argument>csv_directory</argument>
+						<argument>spark_master</argument>
 					</arguments>
 				</configuration>
 			</plugin>
